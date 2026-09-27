@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+**/vendor/
+**/node_modules/
+**/.dart_tool/
+**/build/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/*.sqlite
+**/*.log
+**/local.properties
+**/key.properties
+**/*.jks
+.tools/
