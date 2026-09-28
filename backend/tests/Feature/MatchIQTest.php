@@ -58,6 +58,16 @@ class MatchIQTest extends TestCase {
         $this->getJson('/api/fixtures/'.$fixture->id.'/statistics')->assertStatus(503);
         Http::assertNothingSent();
     }
+    public function test_provider_key_trims_paste_whitespace_and_rejects_embedded_newlines(): void {
+        config(['matchiq.provider_key'=>" test-only\r\n",'matchiq.provider_quota'=>100]);
+        Http::fake(['*'=>Http::response(['errors'=>[],'response'=>[]],200)]);
+        (new ApiFootballProvider)->fetch('countries');
+        Http::assertSent(fn($request) => $request->hasHeader('x-apisports-key', 'test-only'));
+        config(['matchiq.provider_key'=>"test\ninjected"]);
+        $fixture=$this->fixture();
+        $this->getJson('/api/fixtures/'.$fixture->id.'/statistics')->assertStatus(503)->assertJsonMissing(['exception']);
+        Http::assertSentCount(1);
+    }
     public function test_lineups_do_not_call_provider_far_before_kickoff(): void {
         Http::fake();$fixture=$this->fixture();
         $this->getJson('/api/fixtures/'.$fixture->id.'/lineups')->assertOk()->assertJsonPath('confirmed',false);

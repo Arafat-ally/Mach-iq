@@ -28,7 +28,8 @@ class ApiFootballProvider implements FootballDataProvider {
         try {
             $cached = Cache::get($key);
             if ($cached && $cached['expires_at'] > time()) return $this->envelope($cached, false);
-            if (!config('matchiq.provider_key')) return $this->unavailable($cached);
+            $providerKey = trim((string) config('matchiq.provider_key'));
+            if (!$providerKey || preg_match('/[\r\n]/', $providerKey)) return $this->unavailable($cached);
             $quotaKey = 'provider-quota:'.now('UTC')->toDateString();
             $quotaLock = Cache::lock($quotaKey.':lock', 5);
             $allowed = $quotaLock->block(2, function() use ($quotaKey) {
@@ -41,7 +42,7 @@ class ApiFootballProvider implements FootballDataProvider {
             $start = microtime(true);
             try {
                 $response = Http::baseUrl(config('matchiq.provider_url'))->withHeaders([
-                    'x-apisports-key' => config('matchiq.provider_key')])->connectTimeout(3)->timeout(12)->get($resource, $filters);
+                    'x-apisports-key' => $providerKey])->connectTimeout(3)->timeout(12)->get($resource, $filters);
                 $valid = $response->successful() && empty($response->json('errors')) && is_array($response->json('response'));
                 $this->usage($resource, $valid ? 200 : ($response->successful() ? 502 : $response->status()), (int)((microtime(true)-$start)*1000), false);
                 if (!$valid) return $this->unavailable($cached);

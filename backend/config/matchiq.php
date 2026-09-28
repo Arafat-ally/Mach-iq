@@ -1,6 +1,6 @@
 <?php
 return [
-    'provider_key' => env('API_FOOTBALL_KEY'),
+    'provider_key' => trim((string) env('API_FOOTBALL_KEY', '')),
     'provider_url' => 'https://v3.football.api-sports.io',
     'provider_quota' => (int) env('API_FOOTBALL_DAILY_QUOTA', 100),
     'prediction_url' => env('PREDICTION_ENGINE_URL'),
