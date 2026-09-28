@@ -42,19 +42,6 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () => open(context, const AuthScreen()),
             child: Text(tr(context, 'login')),
           ),
-        if (state.signedIn &&
-            state.profile?['user']?['email_verified_at'] == null)
-          ListTile(
-            title: Text(tr(context, 'verify_email')),
-            trailing: const Icon(Icons.email_outlined),
-            onTap: () => attempt(context, () async {
-              await state.api.request(
-                'auth/verification-notification',
-                method: 'POST',
-              );
-              if (context.mounted) message(context, 'verification_sent');
-            }),
-          ),
         ListTile(
           leading: const Icon(Icons.workspace_premium_outlined),
           title: Text(tr(context, 'subscription')),

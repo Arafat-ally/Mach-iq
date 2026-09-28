@@ -106,7 +106,7 @@ class _OnboardingState extends State<OnboardingScreen> {
 class AuthScreen extends StatefulWidget {
   final String mode;
   final String? token, email;
-  const AuthScreen({super.key, this.mode = 'login', this.token, this.email});
+  const AuthScreen({super.key, this.mode = 'device', this.token, this.email});
   @override
   State<AuthScreen> createState() => _AuthState();
 }
@@ -150,14 +150,15 @@ class _AuthState extends State<AuthScreen> {
         method: 'POST',
         body: {
           'email': email.text.trim(),
-          if (mode == 'register') 'name': name.text.trim(),
-          if (mode != 'forgot') 'password': password.text,
+          if (mode == 'register' || mode == 'device') 'name': name.text.trim(),
+          if (mode == 'device') 'device_key': await state.api.deviceKey(),
+          if (mode != 'forgot' && mode != 'device') 'password': password.text,
           if (mode == 'register' || mode == 'reset')
             'password_confirmation': confirmation.text,
           if (mode == 'reset') 'token': widget.token,
         },
       );
-      if (mode == 'login' || mode == 'register') {
+      if (mode == 'login' || mode == 'register' || mode == 'device') {
         await state.login(Map<String, dynamic>.from(result));
         if (mounted) Navigator.pop(context);
       } else if (mounted) {
@@ -216,9 +217,15 @@ class _AuthState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              if (mode == 'register') field(name, 'name'),
+              if (mode == 'register' || mode == 'device') field(name, 'name'),
               field(email, 'email'),
-              if (mode != 'forgot') field(password, 'password', secret: true),
+              if (mode == 'device')
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(tr(context, 'device_account_note')),
+                ),
+              if (mode != 'forgot' && mode != 'device')
+                field(password, 'password', secret: true),
               if (mode == 'register' || mode == 'reset')
                 field(confirmation, 'confirm_password', secret: true),
               FilledButton(
@@ -247,10 +254,13 @@ class _AuthState extends State<AuthScreen> {
               ],
               TextButton(
                 onPressed: () => setState(
-                  () => mode = mode == 'register' ? 'login' : 'register',
+                  () => mode = mode == 'device' ? 'login' : 'device',
                 ),
                 child: Text(
-                  tr(context, mode == 'register' ? 'login' : 'register'),
+                  tr(
+                    context,
+                    mode == 'device' ? 'existing_password_login' : 'device',
+                  ),
                 ),
               ),
             ],

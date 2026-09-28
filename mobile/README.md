@@ -26,7 +26,8 @@ Also inspect onboarding and fixture loading visually. This runtime check catches
 ## External configuration
 
 - Set API_FOOTBALL_KEY only on Laravel in Railway. Never include provider secrets in this app.
-- Configure SMTP on Laravel for email verification and password resets.
+- The default account flow needs only name and email. A random secret in device secure storage authenticates it; contact email does not claim or recover an existing account. Keep app data to retain access. Existing password accounts can still sign in. Email verification is not required for analysis or sent on registration.
+- Configure SMTP on Laravel for legacy password resets.
 - Configure native Firebase projects and providers, then build with FIREBASE_ENABLED=true. Default builds explain that social sign-in and push are unavailable.
 - Set REVENUECAT_PUBLIC_KEY as a Dart define after configuring actual store products and the pro entitlement. Server verification requires RevenueCat credentials on Laravel.
 - Ads are disabled without ADMOB_BANNER_ID. Set the real ADMOB_APP_ID Gradle property before distributing ads; default native app ID is Google's official test ID. Pro accounts are excluded. Unverified reward callbacks do not grant credits.

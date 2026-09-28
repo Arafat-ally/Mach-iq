@@ -32,6 +32,8 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
     protected $hidden = [
         'password',
         'remember_token',
+        'device_key_hash',
+        'contact_email',
     ];
 
     /**
@@ -45,5 +47,11 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function toArray(): array {
+        $data = parent::toArray();
+        if ($this->contact_email !== null) $data['email'] = $this->contact_email;
+        return $data;
     }
 }

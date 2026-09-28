@@ -7,12 +7,31 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:matchiq/main.dart';
+import 'package:matchiq/presentation/auth.dart';
 import 'package:matchiq/data/api_client.dart';
 import 'package:matchiq/domain/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets('default account form asks only for name and email', (
+    tester,
+  ) async {
+    final state = AppState(ApiClient());
+    await state.language('en');
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: state,
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.text('Password'), findsNothing);
+    expect(
+      find.textContaining('No password or email verification.'),
+      findsOneWidget,
+    );
+  });
   testWidgets('empty real fixture state, navigation and locale switching', (
     tester,
   ) async {

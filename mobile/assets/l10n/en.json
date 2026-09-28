@@ -134,5 +134,8 @@
   "edit_profile": "Edit profile",
   "timezone": "Timezone",
   "save_changes": "Save changes",
-  "password_hint": "At least 12 characters, uppercase, lowercase and a number"
+  "password_hint": "At least 12 characters, uppercase, lowercase and a number",
+  "device": "Continue with name and email",
+  "existing_password_login": "Sign in to an existing password account",
+  "device_account_note": "No password or email verification. Your account stays on this phone. Reinstalling or using another phone creates a separate account; email alone cannot recover it."
 }

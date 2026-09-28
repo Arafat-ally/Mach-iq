@@ -6,12 +6,30 @@ use Illuminate\Support\Facades\{DB, Hash, Password};
 use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller {
+    public function device(Request $r) {
+        $data=$r->validate(['name'=>'required|string|max:100','email'=>'required|email|max:254',
+            'device_key'=>'required|string|size:64|regex:/\A[a-f0-9]{64}\z/']);
+        $hash=hash('sha256',$data['device_key']);
+        // Email is contact information, never proof of ownership of another account.
+        $user=User::where('device_key_hash',$hash)->first();
+        abort_if($user?->disabled_at,403,'Account disabled.');
+        if (!$user) {
+            $user=new User;
+            $user->email=\Illuminate\Support\Str::uuid().'@device.matchiq.invalid';
+            $user->password=\Illuminate\Support\Str::random(64);
+            $user->device_key_hash=$hash;
+        }
+        $user->name=$data['name'];
+        $user->contact_email=strtolower($data['email']);
+        $user->last_active_at=now();
+        $user->save();
+        return $this->session($user->refresh());
+    }
     public function register(Request $r) {
         $data = $r->validate(['name'=>'required|string|max:100','email'=>'required|email|max:254|unique:users',
             'password'=>['required','confirmed',PasswordRule::min(12)->mixedCase()->numbers()]]);
         $data['email'] = strtolower($data['email']);
         $user = User::create($data);
-        $user->sendEmailVerificationNotification();
         return response()->json($this->session($user),201);
     }
     public function login(Request $r) {

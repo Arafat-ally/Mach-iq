@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -25,6 +26,18 @@ class ApiClient {
   DateTime? tokenIssuedAt;
   Future<void>? refreshing;
   ApiClient({http.Client? client}) : client = client ?? http.Client();
+  Future<String> deviceKey() async {
+    final existing = await storage.read(key: 'device_account_key');
+    if (existing != null) return existing;
+    final random = Random.secure();
+    final key = List.generate(
+      32,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    await storage.write(key: 'device_account_key', value: key);
+    return key;
+  }
+
   Future<void> init() async {
     token = await storage.read(key: 'access_token');
     tokenIssuedAt = DateTime.tryParse(

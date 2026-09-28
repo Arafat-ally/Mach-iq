@@ -9,6 +9,28 @@ use Laravel\Sanctum\Sanctum;
 
 class MatchIQTest extends TestCase {
     use RefreshDatabase;
+    public function test_device_account_requires_no_password_and_cannot_claim_email_owner(): void {
+        Notification::fake();
+        $owner=User::factory()->create(['email'=>'owner@example.com','role'=>'admin']);
+        $payload=['name'=>'Device user','email'=>'owner@example.com','device_key'=>str_repeat('a',64)];
+        $first=$this->postJson('/api/auth/device',$payload)->assertOk()
+            ->assertJsonPath('user.email','owner@example.com')->assertJsonPath('user.role','user')
+            ->assertJsonPath('user.email_verified_at',null)->assertJsonMissingPath('user.device_key_hash');
+        $this->assertNotEquals($owner->id,$first->json('user.id'));
+        $this->postJson('/api/auth/device',$payload)->assertOk()->assertJsonPath('user.id',$first->json('user.id'));
+        $payload['device_key']=str_repeat('b',64);
+        $other=$this->postJson('/api/auth/device',$payload)->assertOk();
+        $this->assertNotEquals($first->json('user.id'),$other->json('user.id'));
+        $this->assertDatabaseMissing('users',['device_key_hash'=>$payload['device_key']]);
+        Notification::assertNothingSent();
+    }
+    public function test_device_account_validation_and_disabled_account(): void {
+        $this->postJson('/api/auth/device',['name'=>'Test','email'=>'invalid','device_key'=>'short'])->assertUnprocessable();
+        $payload=['name'=>'Test','email'=>'test@example.com','device_key'=>str_repeat('c',64)];
+        $id=$this->postJson('/api/auth/device',$payload)->assertOk()->json('user.id');
+        User::findOrFail($id)->forceFill(['disabled_at'=>now()])->save();
+        $this->postJson('/api/auth/device',$payload)->assertForbidden();
+    }
     private function fixture(array $attributes=[]): Fixture {
         $league=League::firstOrCreate(['provider_external_id'=>'39'],['provider'=>'api-football','name'=>'Test league']);
         $home=Team::firstOrCreate(['provider_external_id'=>'1'],['provider'=>'api-football','name'=>'Test home']);
@@ -21,6 +43,8 @@ class MatchIQTest extends TestCase {
         Notification::fake();
         $registration=$this->postJson('/api/auth/register',['name'=>'Tester','email'=>'test@example.com','password'=>'StrongPassword123','password_confirmation'=>'StrongPassword123']);
         $registration->assertCreated()->assertJsonStructure(['token','user']);
+        $registration->assertJsonPath('user.email_verified_at',null);
+        Notification::assertNothingSent();
         $token=$registration->json('token');
         $this->withToken($token)->getJson('/api/admin/dashboard')->assertForbidden();
         $this->withToken($token)->getJson('/api/profile')->assertOk()->assertJsonPath('is_pro',false);
@@ -99,11 +123,10 @@ class MatchIQTest extends TestCase {
         $this->postJson('/api/analyses',['fixture_ids'=>[$fixture->id]])->assertOk()->assertJsonStructure(['data'=>[['error']]]);
         $this->assertDatabaseHas('analysis_usage',['user_id'=>$user->id,'count'=>0]);$this->assertDatabaseCount('predictions',0);
     }
-    public function test_unverified_analysis_and_free_multimatch_rejected(): void {
-        $fixture=$this->fixture();$second=$this->fixture();
+    public function test_unverified_accounts_can_analyse_but_free_multimatch_is_rejected(): void {
+        $fixture=$this->fixture(['kickoff'=>now()->subMinute()]);$second=$this->fixture();
         Sanctum::actingAs(User::factory()->unverified()->create());
-        $this->postJson('/api/analyses',['fixture_ids'=>[$fixture->id]])->assertForbidden();
-        Sanctum::actingAs(User::factory()->create());
+        $this->postJson('/api/analyses',['fixture_ids'=>[$fixture->id]])->assertOk()->assertJsonStructure(['data'=>[['error']]]);
         $this->postJson('/api/analyses',['fixture_ids'=>[$fixture->id,$second->id]])->assertForbidden();
     }
     public function test_admin_disable_is_audited_and_self_disable_rejected(): void {

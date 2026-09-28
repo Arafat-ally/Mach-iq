@@ -134,5 +134,8 @@
   "edit_profile": "Wax ka beddel akoonka",
   "timezone": "Aagga waqtiga",
   "save_changes": "Kaydi isbeddellada",
-  "password_hint": "Ugu yaraan 12 xaraf, xaraf weyn, xaraf yar iyo tiro"
+  "password_hint": "Ugu yaraan 12 xaraf, xaraf weyn, xaraf yar iyo tiro",
+  "device": "Ku sii wad magac iyo email",
+  "existing_password_login": "Gali akoon hore oo password leh",
+  "device_account_note": "Password iyo xaqiijin email looma baahna. Akoonkaagu wuxuu ku xiran yahay telefoonkan. Dib u rakibid ama telefoon kale waxay samaynayaan akoon cusub; email keliya laguma soo celin karo."
 }
