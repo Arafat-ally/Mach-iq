@@ -20,7 +20,32 @@ class AdminController extends Controller {
             'analysis_volume'=>DB::table('predictions')->selectRaw('DATE(generated_at) as date, COUNT(*) as count')->groupByRaw('DATE(generated_at)')->orderBy('date')->get(),
             'model_performance'=>DB::table('prediction_results')->selectRaw('market, COUNT(*) as count, AVG(brier_score) as brier_score, AVG(log_loss) as log_loss')->groupBy('market')->get()];
     }
-    public function users(Request $r) { return User::when($r->filled('search'),fn($q)=>$q->where('email','like','%'.substr($r->search,0,100).'%'))->paginate(30); }
+    public function users(Request $r) {
+        return User::when($r->filled('search'),fn($q)=>$q->where(function($q) use($r) {
+            $term='%'.substr($r->search,0,100).'%';
+            $q->where('email','like',$term)->orWhere('contact_email','like',$term)->orWhere('name','like',$term);
+        }))->latest('id')->paginate(30)->through(function($user) {
+            return $user->toArray()+['trial_expires_at'=>DB::table('subscriptions')->where('user_id',$user->id)->where('provider','admin_trial')->where('status','active')->value('expires_at')];
+        });
+    }
+    public function trial(Request $r,User $user) {
+        $data=$r->validate(['days'=>'required|integer|min:1|max:90']);
+        abort_if($user->disabled_at,422,'Restore this account before granting a trial.');
+        $expires=now()->addDays($data['days']);
+        DB::transaction(function() use($r,$user,$expires,$data) {
+            DB::table('subscriptions')->updateOrInsert(['provider_external_id'=>'admin-trial:'.$user->id],
+                ['user_id'=>$user->id,'provider'=>'admin_trial','plan'=>'pro','status'=>'active','expires_at'=>$expires,'created_at'=>now(),'updated_at'=>now()]);
+            $this->audit($r,'trial.granted',(string)$user->id,['days'=>$data['days'],'expires_at'=>$expires->toIso8601String()]);
+        });
+        return ['expires_at'=>$expires->toIso8601String()];
+    }
+    public function revokeTrial(Request $r,User $user) {
+        DB::transaction(function() use($r,$user) {
+            DB::table('subscriptions')->where('user_id',$user->id)->where('provider','admin_trial')->update(['status'=>'revoked','updated_at'=>now()]);
+            $this->audit($r,'trial.revoked',(string)$user->id,[]);
+        });
+        return response()->noContent();
+    }
     public function disable(Request $r,User $user) {
         $r->validate(['disabled'=>'required|boolean']); abort_if($user->id===$r->user()->id,422,'Cannot disable own account.');
         DB::transaction(function() use($r,$user) {

@@ -29,6 +29,8 @@ Route::middleware('throttle:api')->group(function() {
         Route::get('saved-analyses',[AnalysisController::class,'saved']); Route::post('saved-analyses',[AnalysisController::class,'save']);
         Route::delete('saved-analyses/{id}',[AnalysisController::class,'delete']); Route::get('history',[AnalysisController::class,'history']);
         Route::prefix('admin')->middleware('admin')->group(function() {
+            Route::put('users/{user}/trial',[AdminController::class,'trial']);
+            Route::delete('users/{user}/trial',[AdminController::class,'revokeTrial']);
             Route::get('dashboard',[AdminController::class,'dashboard']); Route::get('users',[AdminController::class,'users']);
             Route::patch('users/{user}',[AdminController::class,'disable']); Route::get('settings',[AdminController::class,'settings']);
             Route::put('settings/{key}',[AdminController::class,'updateSetting']);

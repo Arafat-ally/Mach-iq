@@ -9,6 +9,25 @@ use Laravel\Sanctum\Sanctum;
 
 class MatchIQTest extends TestCase {
     use RefreshDatabase;
+    public function test_admin_can_grant_expire_and_revoke_trials_without_touching_paid_subscriptions(): void {
+        $user=User::factory()->unverified()->create(['contact_email'=>'trial@example.com']);
+        Sanctum::actingAs($user);
+        $this->putJson('/api/admin/users/'.$user->id.'/trial',['days'=>7])->assertForbidden();
+        $admin=User::factory()->create(['role'=>'admin']);Sanctum::actingAs($admin);
+        $this->getJson('/api/admin/users?search=trial@example.com')->assertOk()->assertJsonPath('data.0.id',$user->id);
+        $this->putJson('/api/admin/users/'.$user->id.'/trial',['days'=>0])->assertUnprocessable();
+        $this->putJson('/api/admin/users/'.$user->id.'/trial',['days'=>7])->assertOk();
+        $this->assertTrue((new Entitlements)->pro($user));
+        $this->assertDatabaseHas('audit_logs',['user_id'=>$admin->id,'action'=>'trial.granted','target'=>(string)$user->id]);
+        $this->travel(8)->days();$this->assertFalse((new Entitlements)->pro($user));$this->travelBack();
+        $this->putJson('/api/admin/users/'.$user->id.'/trial',['days'=>14])->assertOk();
+        $this->assertDatabaseCount('subscriptions',1);
+        DB::table('subscriptions')->insert(['user_id'=>$user->id,'provider'=>'store','provider_external_id'=>'paid-test','plan'=>'pro','status'=>'active','expires_at'=>now()->addMonth()]);
+        $this->deleteJson('/api/admin/users/'.$user->id.'/trial')->assertNoContent();
+        $this->assertTrue((new Entitlements)->pro($user));
+        $this->assertDatabaseHas('subscriptions',['provider_external_id'=>'paid-test','status'=>'active']);
+        $this->assertDatabaseHas('subscriptions',['provider_external_id'=>'admin-trial:'.$user->id,'status'=>'revoked']);
+    }
     public function test_device_account_requires_no_password_and_cannot_claim_email_owner(): void {
         Notification::fake();
         $owner=User::factory()->create(['email'=>'owner@example.com','role'=>'admin']);
