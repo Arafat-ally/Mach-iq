@@ -1,0 +1,5 @@
+# Copy to key.properties (ignored by Git). Keep the same key for future updates.
+storeFile=/absolute/path/to/matchiq-release.jks
+storePassword=YOUR_PRIVATE_PASSWORD
+keyAlias=matchiq
+keyPassword=YOUR_PRIVATE_PASSWORD

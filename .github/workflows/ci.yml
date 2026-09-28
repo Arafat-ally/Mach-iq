@@ -1,0 +1,74 @@
+name: MatchIQ checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: matchiq
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: matchiq
+        ports: [5432:5432]
+        options: --health-cmd="pg_isready -U matchiq" --health-interval=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, mbstring
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: cp .env.example .env && php artisan key:generate
+      - run: php artisan test
+      - name: PostgreSQL migration and real Redis connection
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_USERNAME: matchiq
+          DB_PASSWORD: test-only
+          DB_DATABASE: matchiq
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          php artisan migrate --force
+          php artisan matchiq:check-infrastructure
+  prediction:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prediction
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+  flutter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matchiq-web
+          path: mobile/build/web

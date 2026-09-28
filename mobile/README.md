@@ -1,17 +1,27 @@
-# matchiq
+# MatchIQ Android and iOS
 
-A new Flutter project.
+Flutter client with English, Somali and Arabic, RTL, dark/light themes, onboarding, authentication, fixture browsing, match centers, analysis, favorites, saved analyses, history, profile and subscription integration.
 
-## Getting Started
+## Build
 
-This project is a starting point for a Flutter application.
+Use Flutter stable, Java 17, Android SDK 36 and NDK 28.2.13676358. Configure a private release key using `android/key.properties.example`. Actual `key.properties` and keystores are excluded from Git. Preserve the signing key for future app updates.
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --release --dart-define=API_URL=https://mach-iq-production.up.railway.app/api
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+APK output: `build/app/outputs/flutter-apk/app-release.apk`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## External configuration
+
+- Set API_FOOTBALL_KEY only on Laravel in Railway. Never include provider secrets in this app.
+- Configure SMTP on Laravel for email verification and password resets.
+- Configure native Firebase projects and providers, then build with FIREBASE_ENABLED=true. Default builds explain that social sign-in and push are unavailable.
+- Set REVENUECAT_PUBLIC_KEY as a Dart define after configuring actual store products and the pro entitlement. Server verification requires RevenueCat credentials on Laravel.
+- Ads are disabled without ADMOB_BANNER_ID. Set the real ADMOB_APP_ID Gradle property before distributing ads; default native app ID is Google's official test ID. Pro accounts are excluded. Unverified reward callbacks do not grant credits.
+- iOS compilation/signing requires macOS and Xcode.
+
+Complete native-device tests, operator privacy/contact information and store setup before store publication. Statistical estimates are not guaranteed results. External integrations remain unverified until real credentials are configured.
