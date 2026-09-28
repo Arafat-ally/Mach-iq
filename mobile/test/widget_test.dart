@@ -18,7 +18,7 @@ void main() {
     tester,
   ) async {
     final state = AppState(ApiClient());
-    await state.language('en');
+    await tester.runAsync(() => state.language('en'));
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: state,
@@ -44,7 +44,7 @@ void main() {
       ),
     );
     final state = AppState(api)..onboarded = true;
-    await state.language('en');
+    await tester.runAsync(() => state.language('en'));
     await tester.pumpWidget(
       ChangeNotifierProvider.value(value: state, child: const MatchIQApp()),
     );
@@ -52,7 +52,7 @@ void main() {
     expect(find.text('MATCHIQ'), findsOneWidget);
     expect(find.text('Football data is not available yet'), findsOneWidget);
     expect(find.textContaining('Arsenal'), findsNothing);
-    await state.language('ar');
+    await tester.runAsync(() => state.language('ar'));
     await tester.pumpAndSettle();
     expect(find.text('المباريات'), findsOneWidget);
     final context = tester.element(find.text('المباريات'));
