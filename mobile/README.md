@@ -15,6 +15,14 @@ flutter build apk --release --dart-define=API_URL=https://mach-iq-production.up.
 
 APK output: `build/app/outputs/flutter-apk/app-release.apk`.
 
+Run the release APK on a dedicated emulator/device before publishing:
+
+```powershell
+./scripts/smoke-android.ps1 -Adb /path/to/android-sdk/platform-tools/adb.exe -Serial emulator-5554
+```
+
+Also inspect onboarding and fixture loading visually. This runtime check catches native startup crashes that Dart widget tests cannot detect. The release ProGuard rule preserves WorkDatabase_Impl's reflective constructor; without it, R8 removes that constructor and WorkManager crashes before Flutter starts.
+
 ## External configuration
 
 - Set API_FOOTBALL_KEY only on Laravel in Railway. Never include provider secrets in this app.
