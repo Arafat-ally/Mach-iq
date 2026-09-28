@@ -168,7 +168,7 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
                       : AsyncPanel(
                           key: ValueKey('$date:$tab:$league:$refresh'),
                           load: () => state.api.request(
-                            'fixtures?${tab == 2 ? 'live=1' : 'date=${DateFormat('yyyy-MM-dd').format(date)}'}${league != null ? '&league_id=$league' : ''}',
+                            'fixtures?${tab == 2 ? 'live=1' : 'date=${DateFormat('yyyy-MM-dd').format(date)}'}&utc_offset=${date.timeZoneOffset.inMinutes}${league != null ? '&league_id=$league' : ''}',
                             cache: true,
                           ),
                           builder: (data) {

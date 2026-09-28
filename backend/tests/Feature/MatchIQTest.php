@@ -39,6 +39,8 @@ class MatchIQTest extends TestCase {
         $this->getJson('/api/fixtures?date=2026-09-28&timezone=Africa/Nairobi')->assertOk()->assertJsonCount(1,'data');
         $this->getJson('/api/fixtures?date=2026-09-27&timezone=Africa/Nairobi')->assertJsonCount(0,'data');
         $this->getJson('/api/fixtures?live=1')->assertJsonCount(1,'data');
+        $this->getJson('/api/fixtures?date=2026-09-28&utc_offset=180')->assertOk()->assertJsonCount(1,'data');
+        $this->getJson('/api/fixtures?date=2026-09-28&utc_offset=900')->assertStatus(422);
     }
     public function test_provider_adapter_cache_prevents_duplicate_requests(): void {
         config(['matchiq.provider_key'=>'test-only','matchiq.provider_quota'=>100]);

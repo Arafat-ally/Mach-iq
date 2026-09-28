@@ -7,9 +7,13 @@ use Illuminate\Http\Request;
 use Carbon\CarbonImmutable;
 class FootballController extends Controller {
     public function fixtures(Request $r) {
-        $data = $r->validate(['date'=>'nullable|date_format:Y-m-d','timezone'=>'nullable|timezone',
+        $data = $r->validate(['date'=>'nullable|date_format:Y-m-d','timezone'=>'nullable|timezone','utc_offset'=>'nullable|integer|between:-840,840',
             'live'=>'nullable|boolean','league_id'=>'nullable|integer','team_id'=>'nullable|integer','search'=>'nullable|string|max:100']);
         $zone = $data['timezone'] ?? 'UTC';
+        if (!isset($data['timezone']) && isset($data['utc_offset'])) {
+            $offset=(int)$data['utc_offset'];
+            $zone=sprintf('%s%02d:%02d',$offset<0 ? '-' : '+',intdiv(abs($offset),60),abs($offset)%60);
+        }
         $day = CarbonImmutable::parse($data['date'] ?? now($zone)->toDateString(),$zone)->startOfDay();
         $query = Fixture::with(['homeTeam','awayTeam','league']);
         if ($r->boolean('live')) $query->whereIn('status',['1H','HT','2H','ET','BT','P','LIVE']);
