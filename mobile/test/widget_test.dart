@@ -50,12 +50,15 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('MATCHIQ'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Football data is not available yet'), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator), matching: find.byType(Scrollable)).first);
     expect(find.text('Football data is not available yet'), findsOneWidget);
     expect(find.textContaining('Arsenal'), findsNothing);
     await tester.runAsync(() => state.language('ar'));
     await tester.pumpAndSettle();
-    expect(find.text('المباريات'), findsOneWidget);
-    final context = tester.element(find.text('المباريات'));
+    expect(find.text('البطولات'), findsOneWidget);
+    await tester.tap(find.text('البطولات'));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(NavigationBar));
     expect(Directionality.of(context), TextDirection.rtl);
   });
   test('provider errors never become invented match data', () async {
