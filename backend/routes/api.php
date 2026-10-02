@@ -2,6 +2,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{AuthController,FootballController,AccountController,AnalysisController,HealthController,AdminController};
 Route::get('health',HealthController::class);
+Route::get('daily-tickets',[\App\Http\Controllers\TicketController::class,'daily'])->middleware('throttle:api');
+Route::get('daily-tickets/{id}',[\App\Http\Controllers\TicketController::class,'dailyDetail'])->whereNumber('id')->middleware('throttle:api');
+Route::get('performance/daily',fn(\Illuminate\Http\Request $r,\App\Http\Controllers\TicketController $c)=>$c->stats($r,'daily'))->middleware('throttle:api');
 Route::post('subscriptions/webhook',[\App\Http\Controllers\SubscriptionController::class,'webhook'])->middleware('throttle:60,1');
 Route::middleware('throttle:api')->group(function() {
     Route::prefix('auth')->middleware('throttle:auth')->group(function() {
@@ -17,6 +20,14 @@ Route::middleware('throttle:api')->group(function() {
     Route::get('teams',[FootballController::class,'teams']); Route::get('teams/{team}',[FootballController::class,'team']);
     Route::get('search',[FootballController::class,'search'])->middleware('throttle:search');
     Route::middleware(['auth:sanctum','active'])->group(function() {
+        Route::get('my-analyses',[\App\Http\Controllers\TicketController::class,'personal']);
+        Route::get('my-analyses/{id}',[\App\Http\Controllers\TicketController::class,'personalDetail']);
+        Route::post('analysis-preview',[\App\Http\Controllers\TicketController::class,'preview'])->middleware('throttle:analysis');
+        Route::post('my-analyses',[\App\Http\Controllers\TicketController::class,'save'])->middleware('throttle:analysis');
+        Route::get('ticket-bookmarks',[\App\Http\Controllers\TicketController::class,'bookmarks']);
+        Route::match(['PUT','DELETE'],'daily-tickets/{id}/bookmark',[\App\Http\Controllers\TicketController::class,'bookmark']);
+        Route::post('daily-tickets/{id}/picks',[\App\Http\Controllers\TicketController::class,'picks']);
+        Route::get('performance/personal',fn(\Illuminate\Http\Request $r,\App\Http\Controllers\TicketController $c)=>$c->stats($r,'personal'));
         Route::post('auth/refresh',[AuthController::class,'refresh']); Route::post('auth/logout',[AuthController::class,'logout']);
         Route::post('auth/verification-notification',function(\Illuminate\Http\Request $r) { if(!$r->user()->hasVerifiedEmail()) $r->user()->sendEmailVerificationNotification(); return ['sent'=>true]; })->middleware('throttle:auth');
         Route::get('profile',[AccountController::class,'profile']); Route::patch('profile',[AccountController::class,'update']);

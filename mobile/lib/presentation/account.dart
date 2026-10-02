@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'tickets.dart';
+import 'brand.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,10 +24,7 @@ class ProfileScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const CircleAvatar(
-          radius: 34,
-          child: Icon(Icons.person_outline, size: 38),
-        ),
+        const Center(child: MatchBrand(large: true)),
         const SizedBox(height: 16),
         Center(
           child: Text(
@@ -63,17 +65,43 @@ class ProfileScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.query_stats),
           title: Text(tr(context, 'history')),
-          onTap: () => open(context, const HistoryScreen()),
+          onTap: () => open(context, const PerformanceScreen()),
         ),
         ListTile(
           leading: const Icon(Icons.bookmark_outline),
-          title: Text(tr(context, 'saved')),
-          onTap: () => open(context, const SavedScreen()),
+          title: Text(tr(context, 'My Analyses')),
+          onTap: () => open(context, const TicketsScreen(source: 'personal')),
         ),
         ListTile(
           leading: const Icon(Icons.notifications_outlined),
           title: Text(tr(context, 'notifications')),
           onTap: () => open(context, const NotificationsScreen()),
+        ),
+        ListTile(
+          leading: const Icon(Icons.confirmation_number_outlined),
+          title: Text(tr(context, 'Saved Tickets')),
+          onTap: () => open(context, const TicketsScreen(bookmarks: true)),
+        ),
+        ListTile(
+          leading: const Icon(Icons.history),
+          title: Text(tr(context, 'Earlier Saved Analyses')),
+          onTap: () => open(context, const SavedScreen()),
+        ),
+        ListTile(
+          leading: const Icon(Icons.help_outline),
+          title: Text(tr(context, 'Help & Support')),
+          onTap: () => showDialog(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: Text(tr(context, 'Help & Support')),
+              content: Text(
+                tr(
+                  context,
+                  'Pull to refresh data. Predictions need historical results; daily tickets also need bookmaker odds. Keep this phone’s app data to preserve a device account.',
+                ),
+              ),
+            ),
+          ),
         ),
         const Divider(),
         DropdownButtonFormField<String>(
@@ -433,6 +461,19 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsState();
 }
 
+Map<String, dynamic> notificationPreferences(
+  BuildContext context, {
+  bool listen = true,
+}) {
+  final raw = Provider.of<AppState>(
+    context,
+    listen: listen,
+  ).profile?['user']?['notification_preferences'];
+  return raw is String
+      ? Map<String, dynamic>.from(jsonDecode(raw))
+      : Map<String, dynamic>.from(raw ?? {});
+}
+
 class _NotificationsState extends State<NotificationsScreen> {
   int refresh = 0;
   @override
@@ -440,6 +481,29 @@ class _NotificationsState extends State<NotificationsScreen> {
     appBar: AppBar(title: Text(tr(context, 'notifications'))),
     body: Column(
       children: [
+        for (final pref in {
+          'daily_ready': 'Daily tickets ready',
+          'analysis_settled': 'My analysis results',
+        }.entries)
+          SwitchListTile(
+            dense: true,
+            title: Text(tr(context, pref.value)),
+            value: notificationPreferences(context)[pref.key] != false,
+            onChanged: (value) => attempt(context, () async {
+              final state = context.read<AppState>();
+              await state.api.request(
+                'profile',
+                method: 'PATCH',
+                body: {
+                  'notification_preferences': {
+                    ...notificationPreferences(context, listen: false),
+                    pref.key: value,
+                  },
+                },
+              );
+              await state.refreshProfile();
+            }),
+          ),
         Padding(
           padding: const EdgeInsets.all(16),
           child: FilledButton(

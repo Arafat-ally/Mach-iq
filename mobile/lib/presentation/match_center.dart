@@ -3,144 +3,280 @@ import 'package:provider/provider.dart';
 
 import '../domain/app_state.dart';
 import 'widgets.dart';
-import 'analysis.dart';
-import 'home.dart';
+import 'brand.dart';
+import 'tickets.dart';
+import 'match_sections.dart';
 
-class MatchCenter extends StatelessWidget {
+class MatchCenter extends StatefulWidget {
   final Map<String, dynamic> fixture;
   const MatchCenter({super.key, required this.fixture});
   @override
+  State<MatchCenter> createState() => _MatchCenterState();
+}
+
+class _MatchCenterState extends State<MatchCenter> {
+  late Map<String, dynamic> fixture = widget.fixture;
+  Future<void> refresh() async {
+    await attempt(context, () async {
+      final d = await context.read<AppState>().api.request(
+        'fixtures/${fixture['id']}',
+        cache: true,
+      );
+      if (mounted) {
+        setState(() => fixture = Map<String, dynamic>.from(d['data']));
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final state = context.read<AppState>();
-    const sections = [
-      'overview',
-      'ai_analysis',
-      'statistics',
-      'h2h',
-      'lineups',
-      'injuries',
-      'odds',
-    ];
+    final f = fixture;
     return DefaultTabController(
-      length: sections.length,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            '${fixture['home_team']['name']} • ${fixture['away_team']['name']}',
+            f['league']?['name'] ?? '',
+            style: const TextStyle(fontSize: 15),
           ),
-          bottom: TabBar(
-            isScrollable: true,
-            tabs: sections.map((s) => Tab(text: tr(context, s))).toList(),
-          ),
+          actions: [
+            IconButton(
+              tooltip: tr(context, 'Refresh'),
+              onPressed: refresh,
+              icon: const Icon(Icons.refresh),
+            ),
+            IconButton(
+              tooltip: tr(context, 'favorite'),
+              icon: const Icon(Icons.star_border, color: gold),
+              onPressed: () => attempt(context, () async {
+                await context.read<AppState>().api.request(
+                  'favorites/matches/${f['id']}',
+                  method: 'PUT',
+                );
+                if (context.mounted) message(context, 'saved');
+              }),
+            ),
+          ],
         ),
-        body: TabBarView(
-          children: sections.map<Widget>((section) {
-            if (section == 'ai_analysis') {
-              return Center(
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.insights),
-                  label: Text(tr(context, 'analyze')),
-                  onPressed: () =>
-                      open(context, AnalysisBuilder(fixtures: [fixture])),
-                ),
-              );
-            }
-            if (section == 'overview') {
-              return ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  Text(fixture['league']['name'], textAlign: TextAlign.center),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Logo(fixture['home_team']['logo']),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: GlowCard(
+                child: Column(
+                  children: [
+                    Text(
+                      '${f['status']} · ${DateTime.parse(f['kickoff']).toLocal()}',
+                      style: const TextStyle(fontSize: 10, color: cyan),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Logo(f['home_team']?['logo']),
+                              const SizedBox(height: 8),
+                              Text(
+                                f['home_team']?['name'] ?? '',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${f['home_goals'] ?? '—'} – ${f['away_goals'] ?? '—'}',
+                          style: const TextStyle(
+                            fontSize: 29,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Logo(f['away_team']?['logo']),
+                              const SizedBox(height: 8),
+                              Text(
+                                f['away_team']?['name'] ?? '',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (f['elapsed'] != null)
                       Text(
-                        '${fixture['home_goals'] ?? '—'} : ${fixture['away_goals'] ?? '—'}',
-                        style: Theme.of(context).textTheme.displaySmall,
+                        '${f['elapsed']}′',
+                        style: const TextStyle(color: red),
                       ),
-                      Logo(fixture['away_team']['logo']),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '${fixture['status']} • ${DateTime.parse(fixture['kickoff']).toLocal()}',
-                    textAlign: TextAlign.center,
-                  ),
-                  for (final side in ['home_team', 'away_team'])
-                    ListTile(
-                      leading: Logo(fixture[side]['logo']),
-                      title: Text(fixture[side]['name']),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => open(
-                        context,
-                        CatalogDetail(
-                          kind: 'teams',
-                          item: Map<String, dynamic>.from(fixture[side]),
+                  ],
+                ),
+              ),
+            ),
+            TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                for (final t in [
+                  'Overview',
+                  'Statistics',
+                  'Momentum',
+                  'H2H',
+                  'Lineups',
+                  'Analysis',
+                ])
+                  Tab(text: tr(context, t)),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  ListView(
+                    padding: const EdgeInsets.all(14),
+                    children: [
+                      const SectionTitle('Recent Form'),
+                      SizedBox(
+                        height: 230,
+                        child: MatchSection(
+                          fixture: f,
+                          section: 'home_form',
+                          builder: (d) =>
+                              RecentForm(d['data'], team: f['home_team']),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 16),
-                  Text(
-                    tr(context, 'responsible_text'),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(
-                    height: 500,
-                    child: AsyncPanel(
-                      load: () => state.api.request(
-                        'fixtures/${fixture['id']}/events',
-                        cache: true,
+                      SizedBox(
+                        height: 230,
+                        child: MatchSection(
+                          fixture: f,
+                          section: 'away_form',
+                          builder: (d) =>
+                              RecentForm(d['data'], team: f['away_team']),
+                        ),
                       ),
-                      builder: (data) => DataCards(data['data']),
+                      const SectionTitle('Match Events'),
+                      SizedBox(
+                        height: 420,
+                        child: MatchSection(
+                          fixture: f,
+                          section: 'events',
+                          builder: (d) => EventsPanel(d['data']),
+                        ),
+                      ),
+                      const SectionTitle('Injuries'),
+                      SizedBox(
+                        height: 220,
+                        child: MatchSection(
+                          fixture: f,
+                          section: 'injuries',
+                          builder: (d) => InjuriesPanel(d['data']),
+                        ),
+                      ),
+                    ],
+                  ),
+                  MatchSection(
+                    fixture: f,
+                    section: 'statistics',
+                    builder: (d) => StatisticsPanel(
+                      List<Map<String, dynamic>>.from(d['data']),
                     ),
+                  ),
+                  ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      GlowCard(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.show_chart, color: cyan, size: 36),
+                            const SizedBox(height: 12),
+                            Text(
+                              tr(context, 'Momentum data unavailable'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tr(
+                                context,
+                                'The provider does not supply a reliable minute-by-minute momentum series. Match events are shown below.',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        height: 430,
+                        child: MatchSection(
+                          fixture: f,
+                          section: 'events',
+                          builder: (d) => EventsPanel(d['data']),
+                        ),
+                      ),
+                    ],
+                  ),
+                  MatchSection(
+                    fixture: f,
+                    section: 'h2h',
+                    builder: (d) => H2HPanel(
+                      List<Map<String, dynamic>>.from(d['data']),
+                      fixture: f,
+                    ),
+                  ),
+                  MatchSection(
+                    fixture: f,
+                    section: 'lineups',
+                    builder: (d) => PitchLineups(d['data']),
+                  ),
+                  MatchSection(
+                    fixture: f,
+                    section: 'analysis',
+                    builder: (d) =>
+                        PredictionPanel(prediction: d['data'], fixture: f),
                   ),
                 ],
-              );
-            }
-            return AsyncPanel(
-              load: () => state.api.request(
-                'fixtures/${fixture['id']}/$section',
-                cache: true,
               ),
-              builder: (data) {
-                if ((data['data'] as List).isEmpty) {
-                  return Empty(
-                    label: section == 'lineups'
-                        ? 'lineup_unavailable'
-                        : 'no_data',
-                  );
-                }
-                if (section == 'statistics') {
-                  return StatisticsPanel(
-                    List<Map<String, dynamic>>.from(data['data']),
-                  );
-                }
-                if (section == 'lineups') {
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(tr(context, 'confirmed_lineup')),
-                      ),
-                      Expanded(child: DataCards(data['data'])),
-                    ],
-                  );
-                }
-                if (section == 'h2h') {
-                  return H2HPanel(
-                    List<Map<String, dynamic>>.from(data['data']),
-                    fixture: fixture,
-                  );
-                }
-                return DataCards(data['data']);
-              },
-            );
-          }).toList(),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class MatchSection extends StatelessWidget {
+  final Map<String, dynamic> fixture;
+  final String section;
+  final Widget Function(dynamic) builder;
+  const MatchSection({
+    super.key,
+    required this.fixture,
+    required this.section,
+    required this.builder,
+  });
+  @override
+  Widget build(BuildContext context) => AsyncPanel(
+    load: () => context.read<AppState>().api.request(
+      'fixtures/${fixture['id']}/$section',
+      cache: true,
+    ),
+    builder: (data) => Column(
+      children: [
+        if (data['stale'] == true)
+          CacheNote(updated: data['cached_at'] ?? data['updated_at']),
+        Expanded(child: builder(data)),
+      ],
+    ),
+  );
 }
 
 class StatisticsPanel extends StatelessWidget {
@@ -149,8 +285,11 @@ class StatisticsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (rows.length < 2) return const Empty();
-    final home = rows[0]['statistics'] as List,
+    final home = (rows[0]['statistics'] as List)
+            .where((e) => e['value'] != null)
+            .toList(),
         away = rows[1]['statistics'] as List;
+    if (home.isEmpty) return const Empty();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: home.map<Widget>((entry) {
@@ -165,16 +304,22 @@ class StatisticsPanel extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('${entry['value'] ?? '—'}'),
-                  Text(tr(context, entry['type'])),
+                  Expanded(
+                    child: Text(
+                      tr(context, entry['type']),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                   Text('${other?['value'] ?? '—'}'),
                 ],
               ),
               const SizedBox(height: 10),
-              LinearProgressIndicator(
-                value: a != null && b != null && a + b > 0 ? a / (a + b) : .5,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(4),
-              ),
+              if (a != null && b != null && a + b > 0)
+                LinearProgressIndicator(
+                  value: a / (a + b),
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(4),
+                ),
             ],
           ),
         );

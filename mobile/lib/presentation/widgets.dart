@@ -31,6 +31,8 @@ class AsyncPanel extends StatefulWidget {
 
 class _AsyncPanelState extends State<AsyncPanel> {
   late Future<dynamic> future;
+  dynamic lastData;
+  bool showCached = false;
   @override
   void initState() {
     super.initState();
@@ -42,9 +44,38 @@ class _AsyncPanelState extends State<AsyncPanel> {
     future: future,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Skeleton();
+        return lastData == null
+            ? const Skeleton()
+            : Stack(
+                children: [
+                  widget.builder(lastData),
+                  const Align(
+                    alignment: Alignment.topCenter,
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                ],
+              );
       }
       if (snapshot.hasError) {
+        if (showCached && lastData != null) {
+          return Column(
+            children: [
+              MaterialBanner(
+                content: Text(tr(context, 'Showing previously loaded data')),
+                actions: [
+                  TextButton(
+                    onPressed: () => setState(() {
+                      showCached = false;
+                      future = widget.load();
+                    }),
+                    child: Text(tr(context, 'retry')),
+                  ),
+                ],
+              ),
+              Expanded(child: widget.builder(lastData)),
+            ],
+          );
+        }
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -62,15 +93,25 @@ class _AsyncPanelState extends State<AsyncPanel> {
                   onPressed: () => setState(() => future = widget.load()),
                   child: Text(tr(context, 'retry')),
                 ),
+                if (lastData != null)
+                  TextButton(
+                    onPressed: () => setState(() => showCached = true),
+                    child: Text(tr(context, 'View Cached Data')),
+                  ),
               ],
             ),
           ),
         );
       }
+      lastData = snapshot.data;
       return RefreshIndicator(
         onRefresh: () async {
           setState(() => future = widget.load());
-          await future;
+          try {
+            await future;
+          } catch (_) {
+            /* Error is displayed by FutureBuilder. */
+          }
         },
         child: widget.builder(snapshot.data),
       );

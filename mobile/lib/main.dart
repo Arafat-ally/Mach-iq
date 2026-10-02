@@ -1,3 +1,5 @@
+import 'presentation/brand.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -46,21 +48,11 @@ class _StartupState extends State<StartupScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.sports_soccer,
-                  color: Color(0xff3578ff),
-                  size: 80,
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: MatchBrand(large: true),
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'MATCHIQ',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 5,
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 if (!snapshot.hasError)
                   const CircularProgressIndicator()
                 else
@@ -84,41 +76,13 @@ class MatchIQApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xff3578ff),
-      brightness: state.dark ? Brightness.dark : Brightness.light,
-    );
     return MaterialApp(
       title: 'MatchIQ',
       debugShowCheckedModeBanner: false,
       locale: state.locale,
       supportedLocales: const [Locale('en'), Locale('so'), Locale('ar')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: scheme,
-        scaffoldBackgroundColor: state.dark
-            ? const Color(0xff080e1a)
-            : const Color(0xfff3f6fb),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          backgroundColor: Colors.transparent,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: state.dark ? const Color(0xff121d30) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: .35),
-            ),
-          ),
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-          filled: true,
-        ),
-      ),
+      theme: matchTheme(state.dark),
       onGenerateRoute: (settings) {
         final uri = Uri.tryParse(settings.name ?? '');
         if (uri?.path == '/reset-password') {
