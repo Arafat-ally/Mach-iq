@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 class FootballController extends Controller {
     public function fixtures(Request $r) {
         $data = $r->validate(['date'=>'nullable|date_format:Y-m-d','timezone'=>'nullable|timezone','utc_offset'=>'nullable|integer|between:-840,840',
-            'range'=>'nullable|in:results,upcoming','live'=>'nullable|boolean','league_id'=>'nullable|integer','team_id'=>'nullable|integer','search'=>'nullable|string|max:100']);
+            'group'=>'nullable|in:all,upcoming,live,finished','range'=>'nullable|in:results,upcoming','live'=>'nullable|boolean','league_id'=>'nullable|integer','team_id'=>'nullable|integer','search'=>'nullable|string|max:100']);
         $zone = $data['timezone'] ?? 'UTC';
         if (!isset($data['timezone']) && isset($data['utc_offset'])) {
             $offset=(int)$data['utc_offset'];
@@ -18,6 +18,9 @@ class FootballController extends Controller {
         $query = Fixture::with(['homeTeam','awayTeam','league']);
         if ($r->boolean('live')) $query->whereIn('status',['1H','HT','2H','ET','BT','P','LIVE']);
         elseif (!$r->filled('team_id') && !$r->filled('range')) $query->where('kickoff','>=',$day->utc())->where('kickoff','<',$day->addDay()->utc());
+        if($r->input('group')==='upcoming')$query->whereIn('status',['NS','TBD']);
+        if($r->input('group')==='live')$query->whereIn('status',['1H','HT','2H','ET','BT','P','LIVE']);
+        if($r->input('group')==='finished')$query->whereIn('status',['FT','AET','PEN']);
         if($r->input('range')==='results')$query->whereIn('status',['FT','AET','PEN'])->where('kickoff','<',now());
         if($r->input('range')==='upcoming')$query->where('kickoff','>',now());
         if ($r->filled('league_id')) $query->where('league_id',$data['league_id']);

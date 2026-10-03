@@ -5,7 +5,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:name="${applicationName}"
-        android:icon="@drawable/matchiq_icon">
+        android:icon="@drawable/matchiq_crest">
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}"/>
         <activity
             android:name=".MainActivity"

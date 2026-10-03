@@ -66,7 +66,7 @@ class _MatchCenterState extends State<MatchCenter> {
                 child: Column(
                   children: [
                     Text(
-                      '${f['status']} · ${DateTime.parse(f['kickoff']).toLocal()}',
+                      '${tr(context, fixtureStatus(f['status']))} · ${matchDate(f['kickoff'])}',
                       style: const TextStyle(fontSize: 10, color: cyan),
                     ),
                     const SizedBox(height: 12),
@@ -334,6 +334,9 @@ class H2HPanel extends StatelessWidget {
   const H2HPanel(this.rows, {super.key, required this.fixture});
   @override
   Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return const Empty(label: 'No previous meetings available.');
+    }
     final completed = rows
         .where(
           (r) =>
@@ -342,6 +345,18 @@ class H2HPanel extends StatelessWidget {
               r['goals']?['away'] != null,
         )
         .toList();
+    final homeId = '${fixture['home_team']?['provider_external_id']}';
+    var homeWins = 0, awayWins = 0, draws = 0;
+    for (final r in completed) {
+      final h = r['goals']['home'] as int, a = r['goals']['away'] as int;
+      if (h == a) {
+        draws++;
+      } else if ((h > a) == ('${r['teams']['home']['id']}' == homeId)) {
+        homeWins++;
+      } else {
+        awayWins++;
+      }
+    }
     final total = completed.length;
     final goals = completed.fold<int>(
       0,
@@ -350,6 +365,12 @@ class H2HPanel extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (total > 0)
+          MetricGrid({
+            'Home Wins': '$homeWins',
+            'Draws': '$draws',
+            'Away Wins': '$awayWins',
+          }),
         if (total > 0)
           Card(
             child: Padding(
@@ -375,7 +396,7 @@ class H2HPanel extends StatelessWidget {
               title: Text(
                 '${row['teams']['home']['name']}  ${row['goals']['home'] ?? '—'} : ${row['goals']['away'] ?? '—'}  ${row['teams']['away']['name']}',
               ),
-              subtitle: Text('${row['fixture']['date']}'),
+              subtitle: Text(matchDate(row['fixture']['date'])),
             ),
           ),
       ],

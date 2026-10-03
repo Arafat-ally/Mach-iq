@@ -325,7 +325,7 @@ class PredictionPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          '${tr(context, 'Snapshot')}: ${prediction['generated_at']}',
+          '${tr(context, 'Snapshot')}: ${matchDate(prediction['generated_at'])}',
           style: const TextStyle(color: Colors.blueGrey, fontSize: 11),
         ),
         if (prediction['locked_at'] != null) const StatusPill('LOCKED'),

@@ -58,6 +58,19 @@ class MatchIQTest extends TestCase {
             'league_id'=>$league->id,'home_team_id'=>$home->id,'away_team_id'=>$away->id,'season'=>2026,
             'kickoff'=>now()->addDay(),'status'=>'NS','data'=>[],'synced_at'=>now()]);
     }
+    public function test_match_groups_use_provider_status_with_selected_date(): void {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-02 12:00:00','UTC'));
+        $this->fixture(['kickoff'=>now()->subHour(),'status'=>'NS']);
+        $this->fixture(['kickoff'=>now()->subHour(),'status'=>'HT']);
+        $this->fixture(['kickoff'=>now()->subHours(3),'status'=>'FT']);
+        $this->fixture(['kickoff'=>now()->subDay(),'status'=>'FT']);
+        $this->fixture(['kickoff'=>now()->addHour(),'status'=>'PST']);
+        foreach(['upcoming'=>'NS','live'=>'HT','finished'=>'FT'] as $group=>$status) {
+            $this->getJson('/api/fixtures?date=2026-10-02&group='.$group)->assertOk()->assertJsonCount(1,'data')->assertJsonPath('data.0.status',$status);
+        }
+        $this->getJson('/api/fixtures?date=2026-10-02&group=all')->assertJsonCount(4,'data');
+        $this->getJson('/api/fixtures?group=invalid')->assertUnprocessable();
+    }
     public function test_register_login_logout_and_admin_rejection(): void {
         Notification::fake();
         $registration=$this->postJson('/api/auth/register',['name'=>'Tester','email'=>'test@example.com','password'=>'StrongPassword123','password_confirmation'=>'StrongPassword123']);

@@ -146,8 +146,8 @@ class Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     children: [
-      const SizedBox(height: 90),
-      const Icon(Icons.sports_soccer, size: 48),
+      const SizedBox(height: 32),
+      const Icon(Icons.sports_soccer, size: 32),
       const SizedBox(height: 20),
       Center(child: Text(tr(context, label))),
     ],

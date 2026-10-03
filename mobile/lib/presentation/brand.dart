@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 
@@ -72,118 +72,128 @@ ThemeData matchTheme(bool dark) => ThemeData(
   ),
 );
 
+const crestAsset = 'assets/branding/matchiq-crest.png';
+
 class MatchBrand extends StatelessWidget {
   final bool large;
   const MatchBrand({super.key, this.large = false});
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SizedBox(
-        width: large ? 92 : 42,
-        height: large ? 100 : 45,
-        child: CustomPaint(painter: CrestPainter()),
+  Widget build(BuildContext context) => large
+      ? Image.asset(
+          crestAsset,
+          width: 240,
+          height: 240,
+          fit: BoxFit.contain,
+          semanticLabel: 'MATCHIQ',
+        )
+      : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: Image.asset(
+                crestAsset,
+                width: 42,
+                height: 42,
+                semanticLabel: 'MATCHIQ crest',
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Flexible(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'MATCH',
+                      style: TextStyle(color: gold),
+                    ),
+                    TextSpan(
+                      text: 'IQ',
+                      style: TextStyle(color: cyan),
+                    ),
+                  ],
+                ),
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        );
+}
+
+class BrandBackdrop extends StatelessWidget {
+  final Widget child;
+  const BrandBackdrop({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xff020913), Color(0xff05233c), Color(0xff020c16)],
       ),
-      const SizedBox(width: 8),
-      Flexible(
-        child: Text.rich(
-          TextSpan(
-            children: [
-              const TextSpan(
-                text: 'MATCH',
-                style: TextStyle(color: gold),
+    ),
+    child: Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset('assets/branding/stadium.png', fit: BoxFit.cover),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  navy.withValues(alpha: .15),
+                  Colors.transparent,
+                  navy.withValues(alpha: .55),
+                ],
               ),
-              const TextSpan(
-                text: 'IQ',
-                style: TextStyle(color: cyan),
-              ),
-            ],
-          ),
-          style: TextStyle(
-            fontSize: large ? 40 : 24,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -.6,
+            ),
           ),
         ),
-      ),
-    ],
+        child,
+      ],
+    ),
   );
 }
 
-class CrestPainter extends CustomPainter {
-  @override
-  void paint(Canvas c, Size s) {
-    c.save();
-    c.scale(s.width / 100, s.height / 110);
-    final shield = Path()
-      ..moveTo(12, 37)
-      ..lineTo(88, 37)
-      ..lineTo(82, 78)
-      ..quadraticBezierTo(65, 99, 50, 104)
-      ..quadraticBezierTo(28, 94, 18, 78)
-      ..close();
-    c.drawPath(
-      shield,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xff118dff), Color(0xff031027)],
-        ).createShader(const Rect.fromLTWH(0, 35, 100, 70)),
-    );
-    c.drawPath(
-      shield,
-      Paint()
-        ..color = gold
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-    );
-    final crown = Path()
-      ..moveTo(15, 33)
-      ..lineTo(8, 9)
-      ..lineTo(30, 23)
-      ..lineTo(50, 0)
-      ..lineTo(69, 23)
-      ..lineTo(92, 9)
-      ..lineTo(84, 33)
-      ..close();
-    c.drawPath(
-      crown,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xffffec9c), Color(0xffb77815)],
-        ).createShader(const Rect.fromLTWH(8, 0, 84, 35)),
-    );
-    final m = Path()
-      ..moveTo(25, 78)
-      ..lineTo(25, 49)
-      ..lineTo(50, 71)
-      ..lineTo(75, 49)
-      ..lineTo(75, 78);
-    c.drawPath(
-      m,
-      Paint()
-        ..color = gold
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7
-        ..strokeJoin = StrokeJoin.round,
-    );
-    c.drawCircle(const Offset(51, 91), 11, Paint()..color = Colors.white);
-    final p = Path();
-    for (var i = 0; i < 5; i++) {
-      final a = -math.pi / 2 + i * 2 * math.pi / 5;
-      final x = 51 + 5 * math.cos(a), y = 91 + 5 * math.sin(a);
-      if (i == 0) {
-        p.moveTo(x, y);
-      } else {
-        p.lineTo(x, y);
-      }
-    }
-    p.close();
-    c.drawPath(p, Paint()..color = navy);
-    c.restore();
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+String categoryLabel(String value) =>
+    const {
+      'safe': 'Safe Shax',
+      'balanced': 'Balanced Shax',
+      'high_odds': 'High Odds Shax',
+      'full': 'Full Shax',
+    }[value] ??
+    value;
+String fixtureStatus(dynamic value) =>
+    const {
+      'NS': 'Upcoming',
+      'TBD': 'To be confirmed',
+      '1H': 'Live',
+      '2H': 'Live',
+      'HT': 'Half Time',
+      'ET': 'Extra Time',
+      'BT': 'Extra Time Break',
+      'P': 'Penalties',
+      'LIVE': 'Live',
+      'FT': 'Finished',
+      'AET': 'After Extra Time',
+      'PEN': 'After Penalties',
+      'PST': 'Postponed',
+      'CANC': 'Cancelled',
+      'SUSP': 'Suspended',
+      'INT': 'Interrupted',
+      'ABD': 'Abandoned',
+      'AWD': 'Awarded',
+      'WO': 'Walkover',
+    }['$value'] ??
+    'Unavailable';
+String matchDate(dynamic value) {
+  final d = DateTime.tryParse('$value');
+  return d == null
+      ? 'Time unavailable'
+      : DateFormat('d MMM yyyy • h:mm a').format(d.toLocal());
 }
 
 class GlowCard extends StatelessWidget {

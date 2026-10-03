@@ -48,6 +48,34 @@ class TicketWorkflowTest extends TestCase {
         $this->assertDatabaseCount('notifications',1);
         Sanctum::actingAs($other);$this->getJson('/api/my-analyses/'.$id)->assertNotFound();$this->getJson('/api/performance/personal')->assertJsonPath('tickets.total',0);
     }
+    public function test_daily_generation_requires_real_quotes_and_is_idempotent(): void {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-03 12:00:00','UTC'));
+        $service=app(TicketService::class);
+        foreach([$this->item(),$this->item()] as $item) {
+            DB::table('prediction_probabilities')->insert(['prediction_id'=>$item['prediction_id'],'market'=>'1x2','selection'=>'home','probability'=>.8,'fair_odds'=>1.25,'created_at'=>now(),'updated_at'=>now()]);
+            DB::table('market_quotes')->insert(['fixture_id'=>$item['fixture_id'],'market'=>'1x2','selection'=>'home','bookmaker'=>'Actual quoted source','odds'=>1.5,'observed_at'=>now(),'created_at'=>now(),'updated_at'=>now()]);
+        }
+        $this->assertSame(1,$service->daily());
+        $this->assertSame(0,$service->daily());
+        $this->assertDatabaseCount('daily_tickets',1);
+        $ticket=$service->detail('daily',DB::table('daily_tickets')->value('id'));
+        $this->assertEquals(2.25,$ticket['total_odds']);
+        $this->assertEquals(.64,$ticket['confidence']);
+        $this->assertSame(2,$ticket['selection_count']);
+    }
+    public function test_personal_save_preserves_server_preview_and_rejects_other_users_preview(): void {
+        $user=User::factory()->create();$other=User::factory()->create();$item=$this->item();
+        $preview=(string)Str::uuid();
+        \Illuminate\Support\Facades\Cache::put('analysis-preview:'.$user->id.':'.$preview,[$item],1800);
+        $payload=['name'=>'My Analysis','request_key'=>(string)Str::uuid(),'preview_id'=>$preview,'items'=>[['fixture_id'=>$item['fixture_id'],'market'=>'1x2','selection'=>'home','odds_at_prediction'=>999,'confidence_at_prediction'=>1]]];
+        Sanctum::actingAs($other);$this->postJson('/api/my-analyses',$payload)->assertUnprocessable();
+        Sanctum::actingAs($user);
+        $response=$this->postJson('/api/my-analyses',$payload)->assertCreated();
+        $this->assertEquals(1.5,$response->json('data.total_odds'));
+        $this->assertEquals(.8,$response->json('data.confidence'));
+        $this->postJson('/api/my-analyses',$payload)->assertOk()->assertJsonPath('data.id',$response->json('data.id'));
+        $this->assertDatabaseCount('user_analyses',1);
+    }
     public function test_cannot_create_after_kickoff_and_missing_odds_stay_null(): void {
         $item=$this->item();$item['odds_at_prediction']=null;$service=app(TicketService::class);
         $id=$service->create('daily',['ticket_date'=>today(),'category'=>'safe','name'=>'Safe'],[$item]);

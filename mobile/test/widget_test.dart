@@ -50,17 +50,56 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('MATCHIQ'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Football data is not available yet'), 250, scrollable: find.descendant(of: find.byType(RefreshIndicator), matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.text('Football data is not available yet'),
+      250,
+      scrollable: find
+          .descendant(
+            of: find.byType(RefreshIndicator),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Football data is not available yet'), findsOneWidget);
     expect(find.textContaining('Arsenal'), findsNothing);
     await tester.runAsync(() => state.language('ar'));
     await tester.pumpAndSettle();
-    expect(find.text('البطولات'), findsOneWidget);
-    await tester.tap(find.text('البطولات'));
+    final matchesTab = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('المباريات'),
+    );
+    expect(matchesTab, findsOneWidget);
+    await tester.tap(matchesTab);
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(NavigationBar));
     expect(Directionality.of(context), TextDirection.rtl);
   });
+  for (final size in [const Size(320, 640), const Size(800, 1100)]) {
+    testWidgets('branded welcome and account fit $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final state = AppState(ApiClient());
+      await tester.runAsync(() => state.language('en'));
+      for (final screen in [
+        const OnboardingScreen(),
+        const AuthScreen(),
+        const AuthScreen(mode: 'login'),
+      ]) {
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: state,
+            child: MaterialApp(home: screen),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byType(Image), findsWidgets);
+      }
+      expect(find.text('Continue with Google'), findsNothing);
+    });
+  }
   test('provider errors never become invented match data', () async {
     final api = ApiClient(
       client: MockClient(

@@ -242,7 +242,7 @@ class TicketCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${ticket['generated_at']}'.substring(0, 10),
+                matchDate(ticket['generated_at']),
                 style: const TextStyle(fontSize: 11, color: Colors.blueGrey),
               ),
             ],
@@ -301,7 +301,7 @@ class TicketDetail extends StatelessWidget {
               ],
             ),
             Text(
-              '#$id · ${t['generated_at']}',
+              '#$id · ${matchDate(t['generated_at'])}',
               style: const TextStyle(fontSize: 11, color: Colors.blueGrey),
             ),
             MetricGrid({
@@ -421,7 +421,7 @@ class SelectionCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${f['league']?['name'] ?? ''} · ${item['kickoff_time'] ?? f['kickoff'] ?? ''}',
+            '${f['league']?['name'] ?? ''} · ${matchDate(item['kickoff_time'] ?? f['kickoff'])}',
             style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
           ),
           const SizedBox(height: 8),

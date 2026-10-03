@@ -36,7 +36,7 @@ class TicketService {
     public function daily(): int {
         return Cache::lock('daily-ticket-generation',1800)->get(function() {
             $date=now('UTC')->toDateString();$pool=[];$created=0;
-            $fixtures=Fixture::where('status','NS')->whereBetween('kickoff',[now()->addMinutes(10),now('UTC')->endOfDay()])->orderByDesc('featured')->orderBy('kickoff')->limit(40)->get();
+            $fixtures=Fixture::whereIn('id',DB::table('market_quotes')->where('observed_at','>=',now()->subHours(6))->select('fixture_id'))->where('status','NS')->whereBetween('kickoff',[now()->addMinutes(10),now('UTC')->endOfDay()])->orderByDesc('featured')->orderBy('kickoff')->limit(40)->get();
             foreach($fixtures as $f) {try {$pool[$f->id]=array_values(array_filter($this->candidates($f),fn($x)=>$x['odds_at_prediction']!==null));}catch(\Throwable $e){report($e);}}
             foreach(self::CATEGORIES as $category=>[$min,$max,$threshold]) {
                 if(DB::table('daily_tickets')->where('ticket_date',$date)->where('category',$category)->exists()) continue;

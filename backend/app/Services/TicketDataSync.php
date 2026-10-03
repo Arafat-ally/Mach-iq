@@ -17,6 +17,7 @@ class TicketDataSync {
                     ['odds'=>$odds,'observed_at'=>$observed,'created_at'=>now(),'updated_at'=>now()]);$count++;
             }
         }
+        if(($filters['page']??1)<min(3,(int)($result['paging']['total']??1)))$count+=$this->quotes(array_replace($filters,['page'=>(int)($filters['page']??1)+1]));
         return $count;
     }
     public function prepare(): array {
@@ -24,15 +25,16 @@ class TicketDataSync {
         foreach([now('UTC')->toDateString(),now('UTC')->addDay()->toDateString()] as $date) {
             try{$this->fixtures->sync(['date'=>$date]);}catch(\Throwable $e){$errors[]='Fixtures: '.$e->getMessage();}
         }
+        try{$this->quotes(['date'=>now('UTC')->toDateString(),'page'=>1]);}catch(\Throwable $e){$errors[]='Odds: '.$e->getMessage();}
         // A league-season request supplies both teams' past results with one cacheable request.
-        $leagues=Fixture::with('league')->where('kickoff','>',now())->where('kickoff','<',now()->addDay())->orderByDesc('featured')->get()->unique('league_id')->take(4);
+        $leagues=Fixture::with('league')->whereIn('id',DB::table('market_quotes')->where('observed_at','>=',now()->subHours(6))->select('fixture_id'))->where('kickoff','>',now())->where('kickoff','<',now()->addDay())->orderByDesc('featured')->get()->unique('league_id')->take(4);
         foreach($leagues as $f) {
             $key='history-seeded:'.$f->league_id.':'.$f->season;
             if(Cache::has($key))continue;
-            try{$this->fixtures->sync(['league'=>$f->league->provider_external_id,'season'=>$f->season]);Cache::put($key,true,86400);}
+            try{$history=$this->fixtures->sync(['league'=>$f->league->provider_external_id,'season'=>$f->season]);if(!$history['stale']&&!empty($history['data']))Cache::put($key,true,86400);}
             catch(\Throwable $e){$errors[]='Historical results: '.$e->getMessage();}
         }
-        try{$this->quotes(['date'=>now('UTC')->toDateString(),'page'=>1]);}catch(\Throwable $e){$errors[]='Odds: '.$e->getMessage();}
+
         // Settle selected historical fixtures too, even after a multi-day service outage.
         $ids=DB::table('daily_ticket_items')->where('status','PENDING')->pluck('fixture_id')->merge(DB::table('user_analysis_items')->where('status','PENDING')->pluck('fixture_id'))->unique();
         $external=Fixture::whereIn('id',$ids)->where('kickoff','<',now())->pluck('provider_external_id');

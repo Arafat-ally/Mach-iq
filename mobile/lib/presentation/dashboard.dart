@@ -12,6 +12,7 @@ import 'account.dart';
 import 'tickets.dart';
 import 'analysis.dart';
 import 'match_center.dart';
+import 'matches.dart';
 
 class MatchDashboard extends StatefulWidget {
   const MatchDashboard({super.key});
@@ -99,7 +100,7 @@ class _DashboardState extends State<MatchDashboard>
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 960),
             child: switch (nav) {
-              1 => const LeagueHub(),
+              1 => const MatchesScreen(),
               2 => const MatchSelector(embedded: true),
               3 => const TicketsScreen(embedded: true),
               4 => const ProfileScreen(),
@@ -139,139 +140,38 @@ class _DashboardState extends State<MatchDashboard>
                                 ),
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 children: [
-                                  GlowCard(
-                                    onTap: () => setState(() => nav = 3),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.confirmation_number,
-                                          color: gold,
-                                          size: 36,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                tr(context, 'Daily Tickets'),
-                                                style: const TextStyle(
-                                                  fontSize: 19,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
-                                              ),
-                                              Text(
-                                                tr(
-                                                  context,
-                                                  'Automatically prepared from available match data',
-                                                ),
-                                                style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.blueGrey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const Icon(
-                                          Icons.arrow_circle_right,
-                                          color: cyan,
-                                          size: 30,
-                                        ),
-                                      ],
+                                  SectionTitle(
+                                    'Daily Tickets',
+                                    action: TextButton(
+                                      onPressed: () => setState(() => nav = 3),
+                                      child: Text(tr(context, 'See all')),
                                     ),
                                   ),
                                   LayoutBuilder(
-                                    builder: (c, box) => Wrap(
+                                    builder: (context, box) => Wrap(
                                       spacing: 8,
-                                      runSpacing: 3,
-                                      children: ['safe', 'balanced', 'high_odds', 'full'].map((
-                                        category,
-                                      ) {
-                                        final found = tickets
-                                            .where(
-                                              (t) => t['category'] == category,
-                                            )
-                                            .firstOrNull;
-                                        final color = switch (category) {
-                                          'safe' => green,
-                                          'balanced' => blue,
-                                          'high_odds' => const Color(
-                                            0xffbc58ff,
-                                          ),
-                                          _ => gold,
-                                        };
-                                        return SizedBox(
-                                          width: (box.maxWidth - 8) / 2,
-                                          child: GlowCard(
-                                            accent: color,
-                                            onTap: () => found == null
-                                                ? open(
-                                                    context,
-                                                    const TicketsScreen(),
+                                      runSpacing: 0,
+                                      children: [
+                                        for (final category in [
+                                          'safe',
+                                          'balanced',
+                                          'high_odds',
+                                          'full',
+                                        ])
+                                          SizedBox(
+                                            width: (box.maxWidth - 8) / 2,
+                                            child: _DailySummary(
+                                              category: category,
+                                              ticket: tickets
+                                                  .where(
+                                                    (t) =>
+                                                        t['category'] ==
+                                                        category,
                                                   )
-                                                : open(
-                                                    context,
-                                                    TicketDetail(
-                                                      id: found['id'],
-                                                    ),
-                                                  ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  switch (category) {
-                                                    'safe' =>
-                                                      Icons
-                                                          .verified_user_outlined,
-                                                    'balanced' => Icons.balance,
-                                                    'high_odds' =>
-                                                      Icons
-                                                          .local_fire_department_outlined,
-                                                    _ =>
-                                                      Icons.workspace_premium,
-                                                  },
-                                                  color: color,
-                                                  size: 25,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  tr(context, category),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  found == null
-                                                      ? tr(
-                                                          context,
-                                                          'Awaiting available data',
-                                                        )
-                                                      : '${found['selection_count']} ${tr(context, 'Matches')}',
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.blueGrey,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  found == null
-                                                      ? '—'
-                                                      : '${decimal(found['total_odds'])} ${tr(context, 'Odds')} · ${pct(found['confidence'])}',
-                                                  style: TextStyle(
-                                                    color: color,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
+                                                  .firstOrNull,
                                             ),
                                           ),
-                                        );
-                                      }).toList(),
+                                      ],
                                     ),
                                   ),
                                   if (data['ticket_error'] != null)
@@ -338,6 +238,27 @@ class _DashboardState extends State<MatchDashboard>
                                         ),
                                       ),
                                     ],
+                                  ),
+                                  Align(
+                                    alignment: AlignmentDirectional.centerEnd,
+                                    child: TextButton.icon(
+                                      onPressed: () => open(
+                                        context,
+                                        Scaffold(
+                                          appBar: AppBar(
+                                            title: Text(tr(context, 'leagues')),
+                                          ),
+                                          body: const LeagueHub(),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.emoji_events_outlined,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        tr(context, 'Browse Leagues'),
+                                      ),
+                                    ),
                                   ),
                                   SectionTitle(
                                     tab == 2 ? 'Live Matches' : 'Matches',
@@ -413,7 +334,7 @@ class _DashboardState extends State<MatchDashboard>
         destinations: [
           for (final item in [
             (Icons.home_outlined, 'Home'),
-            (Icons.emoji_events_outlined, 'leagues'),
+            (Icons.sports_soccer_outlined, 'Matches'),
             (Icons.analytics_outlined, 'Analysis'),
             (Icons.confirmation_number_outlined, 'Tickets'),
             (Icons.person_outline, 'profile'),
@@ -455,7 +376,7 @@ class CompactFixture extends StatelessWidget {
               Text(
                 live
                     ? 'LIVE ${f['elapsed'] ?? ''}′'
-                    : '${f['status']} · ${DateFormat.Hm().format(kickoff)}',
+                    : '${tr(context, fixtureStatus(f['status']))} · ${DateFormat.Hm().format(kickoff)}',
                 style: TextStyle(
                   fontSize: 10,
                   color: live ? red : cyan,
@@ -834,4 +755,55 @@ class _LeagueHubState extends State<LeagueHub> {
       ),
     ],
   );
+}
+
+class _DailySummary extends StatelessWidget {
+  final String category;
+  final Map<String, dynamic>? ticket;
+  const _DailySummary({required this.category, this.ticket});
+  @override
+  Widget build(BuildContext context) {
+    final accent = switch (category) {
+      'safe' => green,
+      'balanced' => blue,
+      'high_odds' => const Color(0xffba60ff),
+      _ => gold,
+    };
+    return GlowCard(
+      accent: accent,
+      onTap: () => open(
+        context,
+        ticket == null
+            ? const TicketsScreen()
+            : TicketDetail(id: ticket!['id']),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr(context, categoryLabel(category)),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            ticket == null
+                ? tr(context, 'Awaiting available data')
+                : '${ticket!['selection_count']} ${tr(context, 'Matches')}',
+            style: const TextStyle(fontSize: 10),
+          ),
+          if (ticket != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              '${decimal(ticket!['total_odds'])} ${tr(context, 'Odds')} · ${pct(ticket!['confidence'])}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
