@@ -161,7 +161,24 @@ class Logo extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 36,
     height: 36,
-    child: url is String && (url as String).startsWith('https://')
+    child: url is String && (url as String).startsWith('demo:')
+        ? CircleAvatar(
+            backgroundColor: Color(0xff123c60),
+            child: Text(
+              (url as String)
+                  .substring(5)
+                  .split(' ')
+                  .map((w) => w.isEmpty ? '' : w[0])
+                  .take(3)
+                  .join(),
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          )
+        : url is String && (url as String).startsWith('https://')
         ? Image.network(
             url,
             errorBuilder: (_, error, stack) =>

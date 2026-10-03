@@ -15,6 +15,7 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  bool get isDemo => false;
   static const baseUrl = String.fromEnvironment(
     'API_URL',
     defaultValue: 'https://mach-iq-production.up.railway.app/api',

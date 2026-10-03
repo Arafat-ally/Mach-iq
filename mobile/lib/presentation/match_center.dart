@@ -189,41 +189,53 @@ class _MatchCenterState extends State<MatchCenter> {
                       List<Map<String, dynamic>>.from(d['data']),
                     ),
                   ),
-                  ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      GlowCard(
-                        child: Column(
+                  context.read<AppState>().api.isDemo
+                      ? MatchSection(
+                          fixture: f,
+                          section: 'momentum',
+                          builder: (d) => DemoMomentum(
+                            List<Map<String, dynamic>>.from(d['data']),
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.all(16),
                           children: [
-                            const Icon(Icons.show_chart, color: cyan, size: 36),
-                            const SizedBox(height: 12),
-                            Text(
-                              tr(context, 'Momentum data unavailable'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                            GlowCard(
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    Icons.show_chart,
+                                    color: cyan,
+                                    size: 36,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    tr(context, 'Momentum data unavailable'),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    tr(
+                                      context,
+                                      'The provider does not supply a reliable minute-by-minute momentum series. Match events are shown below.',
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              tr(
-                                context,
-                                'The provider does not supply a reliable minute-by-minute momentum series. Match events are shown below.',
+                            SizedBox(
+                              height: 430,
+                              child: MatchSection(
+                                fixture: f,
+                                section: 'events',
+                                builder: (d) => EventsPanel(d['data']),
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
-                      ),
-                      SizedBox(
-                        height: 430,
-                        child: MatchSection(
-                          fixture: f,
-                          section: 'events',
-                          builder: (d) => EventsPanel(d['data']),
-                        ),
-                      ),
-                    ],
-                  ),
                   MatchSection(
                     fixture: f,
                     section: 'h2h',
@@ -402,4 +414,76 @@ class H2HPanel extends StatelessWidget {
       ],
     );
   }
+}
+
+class DemoMomentum extends StatelessWidget {
+  final List<Map<String, dynamic>> points;
+  const DemoMomentum(this.points, {super.key});
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const SectionTitle('Demo Match Momentum'),
+      Text(tr(context, 'Illustrative sample timeline, not real match data.')),
+      const SizedBox(height: 24),
+      SizedBox(
+        height: 180,
+        child: CustomPaint(painter: _MomentumPainter(points)),
+      ),
+      const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text("0′"),
+          Text("15′"),
+          Text("30′"),
+          Text("45′"),
+          Text("60′"),
+          Text("75′"),
+          Text("90′"),
+        ],
+      ),
+      const SizedBox(height: 16),
+      const Row(
+        children: [
+          Icon(Icons.circle, color: cyan, size: 10),
+          Text(' Home  '),
+          Icon(Icons.circle, color: gold, size: 10),
+          Text(' Away'),
+        ],
+      ),
+    ],
+  );
+}
+
+class _MomentumPainter extends CustomPainter {
+  final List<Map<String, dynamic>> points;
+  _MomentumPainter(this.points);
+  @override
+  void paint(Canvas c, Size s) {
+    final center = s.height / 2;
+    c.drawLine(
+      Offset(0, center),
+      Offset(s.width, center),
+      Paint()..color = Colors.blueGrey,
+    );
+    for (var i = 0; i < points.length; i++) {
+      final x = i * s.width / points.length, w = s.width / points.length - 3;
+      c.drawRect(
+        Rect.fromLTWH(
+          x,
+          center - (points[i]['home'] as num),
+          w,
+          (points[i]['home'] as num).toDouble(),
+        ),
+        Paint()..color = cyan,
+      );
+      c.drawRect(
+        Rect.fromLTWH(x, center, w, (points[i]['away'] as num).toDouble()),
+        Paint()..color = gold,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MomentumPainter old) => old.points != points;
 }

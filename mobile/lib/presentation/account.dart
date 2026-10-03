@@ -27,6 +27,55 @@ class ProfileScreen extends StatelessWidget {
         const Center(
           child: SizedBox(height: 100, child: MatchBrand(large: true)),
         ),
+        if (state.api.isDemo)
+          GlowCard(
+            accent: gold,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tr(context, 'Demo Controls'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: gold,
+                  ),
+                ),
+                Text(
+                  tr(
+                    context,
+                    'Sample data is stored only on this phone. No payment or real prediction.',
+                  ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr(context, 'Demo Pro')),
+                  value: state.isPro,
+                  onChanged: (v) => attempt(context, () async {
+                    await state.api.request(
+                      'demo/plan',
+                      method: 'POST',
+                      body: {'pro': v},
+                    );
+                    await state.refreshProfile();
+                  }),
+                ),
+                FilledButton.icon(
+                  onPressed: () => attempt(context, () async {
+                    await state.api.request('demo/settle', method: 'POST');
+                    await state.refreshProfile();
+                    if (context.mounted) {
+                      message(
+                        context,
+                        'Demo results settled. Open My Analyses.',
+                      );
+                    }
+                  }),
+                  icon: const Icon(Icons.flag_outlined),
+                  label: Text(tr(context, 'Simulate Results')),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 16),
         Center(
           child: Text(
@@ -510,6 +559,13 @@ class _NotificationsState extends State<NotificationsScreen> {
           padding: const EdgeInsets.all(16),
           child: FilledButton(
             onPressed: () => attempt(context, () async {
+              if (context.read<AppState>().api.isDemo) {
+                message(
+                  context,
+                  'Demo notifications are available in this list. No push service is contacted.',
+                );
+                return;
+              }
               if (!const bool.fromEnvironment('FIREBASE_ENABLED')) {
                 throw Exception('push_unavailable');
               }
@@ -588,78 +644,109 @@ class _SubscriptionState extends State<SubscriptionScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(tr(context, 'subscription'))),
-    body: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
+  Widget build(BuildContext context) => context.watch<AppState>().api.isDemo
+      ? Scaffold(
+          appBar: AppBar(title: Text(tr(context, 'Demo Membership'))),
+          body: ListView(
+            padding: const EdgeInsets.all(24),
             children: [
-              const Icon(
-                Icons.workspace_premium,
-                color: Colors.amber,
-                size: 60,
-              ),
+              const Icon(Icons.workspace_premium, color: gold, size: 64),
+              const SizedBox(height: 16),
               Text(
-                'MatchIQ PRO',
-                style: Theme.of(context).textTheme.headlineMedium,
+                tr(context, 'Demo Pro — no purchase required'),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(tr(context, 'pro_description'), textAlign: TextAlign.center),
+              SwitchListTile(
+                title: Text(tr(context, 'Demo Pro')),
+                value: context.watch<AppState>().isPro,
+                onChanged: (v) => attempt(context, () async {
+                  final state = context.read<AppState>();
+                  await state.api.request(
+                    'demo/plan',
+                    method: 'POST',
+                    body: {'pro': v},
+                  );
+                  await state.refreshProfile();
+                }),
+              ),
             ],
           ),
-        ),
-        Expanded(
-          child: AsyncPanel(
-            load: load,
-            builder: (value) {
-              final offerings = value as Offerings;
-              final packages = offerings.current?.availablePackages ?? [];
-              if (packages.isEmpty) {
-                return const Empty(label: 'subscriptions_unavailable');
-              }
-              return ListView(
-                children: [
-                  for (final package in packages)
-                    Card(
-                      child: ListTile(
-                        title: Text(package.storeProduct.title),
-                        subtitle: Text(package.storeProduct.description),
-                        trailing: Text(package.storeProduct.priceString),
-                        onTap: () => attempt(context, () async {
-                          await Purchases.purchase(
-                            PurchaseParams.package(package),
-                          );
-                          if (!context.mounted) return;
-                          final state = context.read<AppState>();
-                          await state.api.request(
-                            'subscriptions/sync',
-                            method: 'POST',
-                          );
-                          await state.refreshProfile();
-                        }),
-                      ),
+        )
+      : Scaffold(
+          appBar: AppBar(title: Text(tr(context, 'subscription'))),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.workspace_premium,
+                      color: Colors.amber,
+                      size: 60,
                     ),
-                  TextButton(
-                    onPressed: () => attempt(context, () async {
-                      await Purchases.restorePurchases();
-                      if (!context.mounted) return;
-                      final state = context.read<AppState>();
-                      await state.api.request(
-                        'subscriptions/sync',
-                        method: 'POST',
-                      );
-                      await state.refreshProfile();
-                    }),
-                    child: Text(tr(context, 'restore_purchases')),
-                  ),
-                ],
-              );
-            },
+                    Text(
+                      'MatchIQ PRO',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      tr(context, 'pro_description'),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: AsyncPanel(
+                  load: load,
+                  builder: (value) {
+                    final offerings = value as Offerings;
+                    final packages = offerings.current?.availablePackages ?? [];
+                    if (packages.isEmpty) {
+                      return const Empty(label: 'subscriptions_unavailable');
+                    }
+                    return ListView(
+                      children: [
+                        for (final package in packages)
+                          Card(
+                            child: ListTile(
+                              title: Text(package.storeProduct.title),
+                              subtitle: Text(package.storeProduct.description),
+                              trailing: Text(package.storeProduct.priceString),
+                              onTap: () => attempt(context, () async {
+                                await Purchases.purchase(
+                                  PurchaseParams.package(package),
+                                );
+                                if (!context.mounted) return;
+                                final state = context.read<AppState>();
+                                await state.api.request(
+                                  'subscriptions/sync',
+                                  method: 'POST',
+                                );
+                                await state.refreshProfile();
+                              }),
+                            ),
+                          ),
+                        TextButton(
+                          onPressed: () => attempt(context, () async {
+                            await Purchases.restorePurchases();
+                            if (!context.mounted) return;
+                            final state = context.read<AppState>();
+                            await state.api.request(
+                              'subscriptions/sync',
+                              method: 'POST',
+                            );
+                            await state.refreshProfile();
+                          }),
+                          child: Text(tr(context, 'restore_purchases')),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    ),
-  );
+        );
 }

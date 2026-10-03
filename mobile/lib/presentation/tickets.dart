@@ -346,7 +346,7 @@ class TicketDetail extends StatelessWidget {
               onPressed: () => SharePlus.instance.share(
                 ShareParams(
                   text:
-                      'MATCHIQ · ${t['name']}\n${items.map((i) => "${i['fixture']['home_team']['name']} vs ${i['fixture']['away_team']['name']} — ${pickLabel(i)} · ${decimal(i['odds_at_prediction'])} · ${i['status']}").join('\n')}\nTotal odds ${decimal(t['total_odds'])} · ${t['status']}\nStatistical estimates, not guarantees.',
+                      '${context.read<AppState>().api.isDemo ? 'MATCHIQ DEMO — fictional sample' : 'MATCHIQ'} · ${t['name']}\n${items.map((i) => "${i['fixture']['home_team']['name']} vs ${i['fixture']['away_team']['name']} — ${pickLabel(i)} · ${decimal(i['odds_at_prediction'])} · ${i['status']}").join('\n')}\nTotal odds ${decimal(t['total_odds'])} · ${t['status']}\nStatistical estimates, not guarantees.',
                 ),
               ),
               icon: const Icon(Icons.share_outlined),
@@ -462,7 +462,7 @@ class SelectionCard extends StatelessWidget {
             ),
           if (item['bookmaker'] != null)
             Text(
-              '${item['bookmaker']} · ${tr(context, 'Snapshot')}: ${item['odds_observed_at']}',
+              '${item['bookmaker']} · ${tr(context, 'Snapshot')}: ${matchDate(item['odds_observed_at'])}',
               style: const TextStyle(fontSize: 9, color: Colors.blueGrey),
             ),
         ],

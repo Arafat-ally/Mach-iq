@@ -351,7 +351,12 @@ class PredictionPanel extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  '${entry.key}',
+                  const {
+                        '1x2': '1X2',
+                        'double_chance': 'Double Chance',
+                        'btts': 'Both Teams Score',
+                      }[entry.key] ??
+                      '${entry.key}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 for (final v in (entry.value as Map).entries)
@@ -359,7 +364,14 @@ class PredictionPanel extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 5),
                     child: Row(
                       children: [
-                        Expanded(child: Text('${v.key}')),
+                        Expanded(
+                          child: Text(
+                            pickLabel({
+                              'market': entry.key,
+                              'selection': v.key,
+                            }),
+                          ),
+                        ),
                         Text(
                           '${((v.value['probability'] as num) * 100).toStringAsFixed(1)}%',
                           style: const TextStyle(color: green),
